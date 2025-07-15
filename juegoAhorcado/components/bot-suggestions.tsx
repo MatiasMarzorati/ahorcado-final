@@ -1,5 +1,5 @@
 import type { FC } from "react"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 interface BotSuggestionsProps {
@@ -16,44 +16,75 @@ interface Sugerencia {
 export const BotSuggestions: FC<BotSuggestionsProps> = ({ palabraOculta, letrasUsadas, palabra }) => {
   const [sugerencias, setSugerencias] = useState<Sugerencia[]>([])
   const [loading, setLoading] = useState(true)
+  const abortControllerRef = useRef<AbortController | null>(null)
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
-    const obtenerSugerencias = async () => {
-      try {
-        console.log("🔄 [CLIENTE] Solicitando sugerencias...", {
-          palabraOculta: palabraOculta.join(""),
-          letrasUsadas,
-          timestamp: new Date().toISOString()
-        })
-        
-        setLoading(true)
-        const response = await fetch("/api/sugerencias", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            palabraOculta,
-            letrasUsadas,
-          }),
-        })
-
-        if (response.ok) {
-          const data = await response.json()
-          console.log("✅ [CLIENTE] Sugerencias recibidas:", data.sugerencias)
-          setSugerencias(data.sugerencias)
-        } else {
-          console.error("❌ [CLIENTE] Error al obtener sugerencias")
-        }
-      } catch (error) {
-        console.error("❌ [CLIENTE] Error:", error)
-      } finally {
-        setLoading(false)
-      }
+    // Cancelar llamada anterior si existe
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+    }
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current)
     }
 
-    obtenerSugerencias()
-  }, [palabraOculta, letrasUsadas])
+    // Crear nuevo AbortController
+    abortControllerRef.current = new AbortController()
+
+    // Debounce de 500ms para evitar llamadas excesivas
+    timeoutRef.current = setTimeout(async () => {
+      const obtenerSugerencias = async () => {
+        try {
+          console.log("🔄 [CLIENTE] Solicitando sugerencias...", {
+            palabraOculta: palabraOculta.join(""),
+            letrasUsadas,
+            timestamp: new Date().toISOString()
+          })
+          
+          setLoading(true)
+          const response = await fetch("/api/sugerencias", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              palabraOculta,
+              letrasUsadas,
+            }),
+            signal: abortControllerRef.current?.signal
+          })
+
+          if (response.ok) {
+            const data = await response.json()
+            console.log("✅ [CLIENTE] Sugerencias recibidas:", data.sugerencias)
+            setSugerencias(data.sugerencias)
+          } else {
+            console.error("❌ [CLIENTE] Error al obtener sugerencias")
+          }
+        } catch (error) {
+          if (error instanceof Error && error.name === 'AbortError') {
+            console.log("🔄 [CLIENTE] Llamada cancelada")
+            return
+          }
+          console.error("❌ [CLIENTE] Error:", error)
+        } finally {
+          setLoading(false)
+        }
+      }
+
+      obtenerSugerencias()
+    }, 500)
+
+    // Cleanup function
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
+      }
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current)
+      }
+    }
+  }, [palabraOculta.join(""), letrasUsadas.join("")])
 
   return (
     <Card>

@@ -9,6 +9,10 @@ export type GuessLetterResponse = {
   letter: AllowedLetter
 }
 
+// Cache simple para evitar llamadas duplicadas
+const suggestionCache = new Map<string, { letra: AllowedLetter, timestamp: number }>()
+const CACHE_DURATION = 5000 // 5 segundos
+
 // Herramienta para adivinar letra
 export const guessLetterTool = {
   type: "function" as const,
@@ -44,6 +48,17 @@ export async function getLetterSuggestion(
   longitud: number
 ): Promise<AllowedLetter> {
   try {
+    // Crear clave de cache
+    const cacheKey = `${patron}-${letrasIncorrectas.sort().join(",")}-${longitud}`
+    const now = Date.now()
+    
+    // Verificar cache
+    const cached = suggestionCache.get(cacheKey)
+    if (cached && (now - cached.timestamp) < CACHE_DURATION) {
+      console.log("🔄 [CACHE] Usando sugerencia cacheada:", cached.letra)
+      return cached.letra
+    }
+
     console.log("🤖 [FUNCTION CALLING] Llamando a ChatGPT...")
     console.log("📊 Contexto:", {
       patron,
@@ -122,6 +137,16 @@ Usa tu propio criterio y conocimiento del español para elegir la mejor letra.`
     // Validar que la letra no haya sido usada
     if (letrasIncorrectas.includes(letra) || patron.includes(letra)) {
       throw new Error(`Letra ${letra} ya fue probada`)
+    }
+
+    // Guardar en cache
+    suggestionCache.set(cacheKey, { letra, timestamp: now })
+    
+    // Limpiar cache antiguo
+    for (const [key, value] of suggestionCache.entries()) {
+      if (now - value.timestamp > CACHE_DURATION) {
+        suggestionCache.delete(key)
+      }
     }
 
     console.log("🎯 [FUNCTION CALLING] Letra válida elegida:", letra)
