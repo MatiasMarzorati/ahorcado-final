@@ -6,45 +6,61 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ArrowLeft, Play, BarChart3, TableIcon } from "lucide-react"
+import { ArrowLeft, Play, BarChart3, TableIcon, Bot, Brain } from "lucide-react"
 import { SimulationResults } from "@/components/simulation-results"
 import { SimulationChart } from "@/components/simulation-chart"
 import { palabrasComunes } from "@/lib/palabras"
-import { simularPartidas } from "@/lib/simulacion"
+import { simularPartidasClasicas, simularPartidasChatGPT } from "@/lib/simulacion"
 import type { BotResult } from "@/lib/tipos"
 
 export default function SimularPage() {
   const [palabras, setPalabras] = useState<string[]>([])
   const [palabrasInput, setPalabrasInput] = useState("")
   const [resultados, setResultados] = useState<BotResult[]>([])
+  const [resultadosChatGPT, setResultadosChatGPT] = useState<BotResult[]>([])
   const [isSimulating, setIsSimulating] = useState(false)
+  const [isSimulatingChatGPT, setIsSimulatingChatGPT] = useState(false)
   const [hasSimulated, setHasSimulated] = useState(false)
+  const [hasSimulatedChatGPT, setHasSimulatedChatGPT] = useState(false)
   const [maxErrores, setMaxErrores] = useState<number>(6)
 
-  const handleSimular = async () => {
-    setIsSimulating(true)
-
-    // Obtener palabras del input o usar palabras comunes
-    let palabrasParaSimular: string[]
-
+  const obtenerPalabrasParaSimular = () => {
     if (palabrasInput.trim()) {
-      palabrasParaSimular = palabrasInput
+      return palabrasInput
         .split("\n")
         .map((p) => p.trim().toLowerCase())
         .filter((p) => p.length > 0)
     } else {
       // Si no hay palabras, usar 20 palabras aleatorias de las comunes
-      palabrasParaSimular = [...palabrasComunes].sort(() => Math.random() - 0.5).slice(0, 20)
+      return [...palabrasComunes].sort(() => Math.random() - 0.5).slice(0, 20)
     }
+  }
 
+  const handleSimularEstrategias = async () => {
+    setIsSimulating(true)
+    const palabrasParaSimular = obtenerPalabrasParaSimular()
     setPalabras(palabrasParaSimular)
 
-    // Simular partidas (con un pequeño retraso para mostrar el estado de carga)
-    setTimeout(() => {
-      const resultadosSimulacion = simularPartidas(palabrasParaSimular, maxErrores)
+    // Simular partidas con estrategias clásicas (sin ChatGPT)
+    setTimeout(async () => {
+      const resultadosSimulacion = await simularPartidasClasicas(palabrasParaSimular, maxErrores)
       setResultados(resultadosSimulacion)
       setIsSimulating(false)
       setHasSimulated(true)
+    }, 500)
+  }
+
+  const handleSimularChatGPT = async () => {
+    setIsSimulatingChatGPT(true)
+    const palabrasParaSimular = obtenerPalabrasParaSimular()
+    setPalabras(palabrasParaSimular)
+
+    // Simular partidas solo con ChatGPT
+    setTimeout(async () => {
+      const resultadosSimulacion = await simularPartidasChatGPT(palabrasParaSimular, maxErrores)
+      setResultadosChatGPT(resultadosSimulacion)
+      setIsSimulatingChatGPT(false)
+      setHasSimulatedChatGPT(true)
     }, 500)
   }
 
@@ -107,50 +123,108 @@ export default function SimularPage() {
                 className="mb-4"
               />
               <div className="flex flex-col gap-2">
-                <Button onClick={handleSimular} disabled={isSimulating} className="gap-2">
-                  <Play className="h-4 w-4" />
-                  {isSimulating ? "Simulando..." : "Iniciar simulación"}
+                <Button onClick={handleSimularEstrategias} disabled={isSimulating} className="gap-2">
+                  <Bot className="h-4 w-4" />
+                  {isSimulating ? "Simulando..." : "Simular estrategias clásicas (SIN GPT)"}
                 </Button>
-                <Button variant="outline" onClick={cargarPalabrasEjemplo} disabled={isSimulating}>
+                <Button onClick={handleSimularChatGPT} disabled={isSimulatingChatGPT} className="gap-2">
+                  <Brain className="h-4 w-4" />
+                  {isSimulatingChatGPT ? "Simulando..." : "Simular solo ChatGPT"}
+                </Button>
+                <Button variant="outline" onClick={cargarPalabrasEjemplo} disabled={isSimulating || isSimulatingChatGPT}>
                   Cargar palabras de ejemplo
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground mt-4">
                 Si no ingresas palabras, se usarán 20 palabras aleatorias del diccionario.
+                Puedes ejecutar las simulaciones por separado: estrategias clásicas (6 bots) o solo ChatGPT.
               </p>
             </CardContent>
           </Card>
         </div>
 
-        <div>
-          {hasSimulated ? (
-            <Tabs defaultValue="tabla">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold">Resultados de la simulación</h2>
-                <TabsList>
-                  <TabsTrigger value="tabla" className="gap-1">
-                    <TableIcon className="h-4 w-4" />
-                    Tabla
-                  </TabsTrigger>
-                  <TabsTrigger value="grafico" className="gap-1">
-                    <BarChart3 className="h-4 w-4" />
-                    Gráfico
-                  </TabsTrigger>
-                </TabsList>
+        <div className="space-y-8">
+          {/* Resultados de Estrategias Tradicionales */}
+          {(hasSimulated || isSimulating) && (
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <Bot className="h-5 w-5" />
+                <h2 className="text-xl font-bold">Estrategias Clásicas (SIN GPT)</h2>
+                {isSimulating && (
+                  <div className="text-sm text-muted-foreground">Simulando...</div>
+                )}
               </div>
+              
+              {hasSimulated && (
+                <Tabs defaultValue="tabla">
+                  <div className="flex justify-between items-center mb-4">
+                    <TabsList>
+                      <TabsTrigger value="tabla" className="gap-1">
+                        <TableIcon className="h-4 w-4" />
+                        Tabla
+                      </TabsTrigger>
+                      <TabsTrigger value="grafico" className="gap-1">
+                        <BarChart3 className="h-4 w-4" />
+                        Gráfico
+                      </TabsTrigger>
+                    </TabsList>
+                  </div>
 
-              <TabsContent value="tabla">
-                <SimulationResults resultados={resultados} palabras={palabras} maxErrores={maxErrores} />
-              </TabsContent>
+                  <TabsContent value="tabla">
+                    <SimulationResults resultados={resultados} palabras={palabras} maxErrores={maxErrores} />
+                  </TabsContent>
 
-              <TabsContent value="grafico">
-                <SimulationChart resultados={resultados} />
-              </TabsContent>
-            </Tabs>
-          ) : (
+                  <TabsContent value="grafico">
+                    <SimulationChart resultados={resultados} />
+                  </TabsContent>
+                </Tabs>
+              )}
+            </div>
+          )}
+
+          {/* Resultados de ChatGPT */}
+          {(hasSimulatedChatGPT || isSimulatingChatGPT) && (
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <Brain className="h-5 w-5" />
+                <h2 className="text-xl font-bold">ChatGPT</h2>
+                {isSimulatingChatGPT && (
+                  <div className="text-sm text-muted-foreground">Simulando...</div>
+                )}
+              </div>
+              
+              {hasSimulatedChatGPT && (
+                <Tabs defaultValue="tabla">
+                  <div className="flex justify-between items-center mb-4">
+                    <TabsList>
+                      <TabsTrigger value="tabla" className="gap-1">
+                        <TableIcon className="h-4 w-4" />
+                        Tabla
+                      </TabsTrigger>
+                      <TabsTrigger value="grafico" className="gap-1">
+                        <BarChart3 className="h-4 w-4" />
+                        Gráfico
+                      </TabsTrigger>
+                    </TabsList>
+                  </div>
+
+                  <TabsContent value="tabla">
+                    <SimulationResults resultados={resultadosChatGPT} palabras={palabras} maxErrores={maxErrores} />
+                  </TabsContent>
+
+                  <TabsContent value="grafico">
+                    <SimulationChart resultados={resultadosChatGPT} />
+                  </TabsContent>
+                </Tabs>
+              )}
+            </div>
+          )}
+
+          {/* Estado inicial */}
+          {!hasSimulated && !hasSimulatedChatGPT && !isSimulating && !isSimulatingChatGPT && (
             <div className="flex flex-col items-center justify-center h-full p-12 border rounded-lg bg-muted/20">
               <p className="text-muted-foreground text-center">
-                Ingresa palabras y haz clic en "Iniciar simulación" para ver los resultados de los bots.
+                Ingresa palabras y selecciona qué tipo de simulación quieres ejecutar.
               </p>
             </div>
           )}

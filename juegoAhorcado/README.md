@@ -1,36 +1,74 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Juego del Ahorcado con Simulación de Bots
 
-## Getting Started
+Un proyecto educativo que combina el clásico juego del ahorcado con análisis de algoritmos de resolución de problemas.
 
-First, run the development server:
+## 🎮 Características
+
+- **Juego Manual**: Interfaz interactiva para jugar al ahorcado
+- **Simulación de Bots**: 7 bots con diferentes estrategias
+- **Análisis Comparativo**: Estadísticas detalladas de rendimiento
+- **Visualizaciones**: Gráficos y tablas de resultados
+
+## 🤖 Estrategias de Bots
+
+1. **BotRandom**: Elección aleatoria
+2. **BotFrecuencia**: Basado en frecuencia de letras en español
+3. **BotInteligente**: Filtrado de diccionario por patrones
+4. **BotFonetico**: Formación de sílabas comunes
+5. **BotConservador**: Aprendizaje de letras exitosas
+6. **BotKamikaze**: Estrategia híbrida (letras raras → comunes)
+7. **BotChatGPT**: Inteligencia artificial (requiere API key)
+
+## 🚀 Configuración
+
+### Instalación
+
+```bash
+npm install
+```
+
+### Variables de Entorno
+
+Para usar el BotChatGPT, crea un archivo `.env.local` en la raíz del proyecto:
+
+```bash
+OPENAI_API_KEY=tu_api_key_de_openai_aqui
+```
+
+Puedes obtener una API key gratuita en [OpenAI Platform](https://platform.openai.com/api-keys).
+
+### Desarrollo
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Abre [http://localhost:3000](http://localhost:3000) en tu navegador.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 📊 Análisis de Estrategias
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Cada bot implementa un enfoque diferente:
 
-## Learn More
+- **BotInteligente**: El más sofisticado, usa técnicas de procesamiento de lenguaje natural
+- **BotFrecuencia**: Muy eficiente para su simplicidad
+- **BotConservador**: Implementa aprendizaje básico
+- **BotKamikaze**: Demuestra estrategias de exploración vs explotación
+- **BotFonetico**: Aprovecha características específicas del español
+- **BotChatGPT**: Usa inteligencia artificial para análisis contextual
 
-To learn more about Next.js, take a look at the following resources:
+## 🛠️ Tecnologías
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- **Framework**: Next.js 15 con App Router
+- **Lenguaje**: TypeScript
+- **UI**: Tailwind CSS + Radix UI
+- **Gráficos**: Recharts
+- **IA**: OpenAI API (opcional)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 📚 Valor Educativo
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Este proyecto es excelente para:
+- Aprender algoritmos de resolución de problemas
+- Comparar estrategias de búsqueda
+- Visualizar datos de rendimiento
+- Entender patrones en el lenguaje español
+- Desarrollar pensamiento algorítmico

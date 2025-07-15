@@ -32,7 +32,7 @@ export const BotFrecuencia: Bot = {
 // Bot que filtra palabras del diccionario según el patrón actual
 export const BotInteligente: Bot = {
   nombre: "BotInteligente",
-  elegirLetra: (palabraOculta, letrasUsadas) => {
+  elegirLetra: async (palabraOculta, letrasUsadas) => {
     // Crear expresión regular basada en el patrón actual
     const patron = palabraOculta.map((c) => (c === "_" ? "." : c)).join("")
     const regex = new RegExp(`^${patron}$`)
@@ -60,8 +60,8 @@ export const BotInteligente: Bot = {
     })
 
     if (palabrasPosibles.length === 0) {
-      // Si no hay palabras posibles, usar estrategia de frecuencia
-      return BotFrecuencia.elegirLetra(palabraOculta, letrasUsadas)
+          // Si no hay palabras posibles, usar estrategia de frecuencia
+    return await BotFrecuencia.elegirLetra(palabraOculta, letrasUsadas)
     }
 
     // Contar frecuencia de letras en las palabras posibles
@@ -90,14 +90,14 @@ export const BotInteligente: Bot = {
     }
 
     // Si no hay letras frecuentes, usar estrategia de frecuencia
-    return BotFrecuencia.elegirLetra(palabraOculta, letrasUsadas)
+    return await BotFrecuencia.elegirLetra(palabraOculta, letrasUsadas)
   },
 }
 
 // Bot que intenta formar sílabas frecuentes
 export const BotFonetico: Bot = {
   nombre: "BotFonetico",
-  elegirLetra: (palabraOculta, letrasUsadas) => {
+  elegirLetra: async (palabraOculta, letrasUsadas) => {
     // Buscar patrones de sílabas incompletas
     for (const silaba of silabasComunes) {
       // Si la primera letra de la sílaba está en la palabra pero la segunda no
@@ -109,8 +109,24 @@ export const BotFonetico: Bot = {
       }
     }
 
+    // Estrategia alternativa: buscar letras que formen sílabas comunes
+    // Priorizar letras que podrían formar sílabas con letras ya conocidas
+    const letrasConocidas = palabraOculta.filter(l => l !== "_")
+    for (const letra of frecuenciaLetras) {
+      if (!letrasUsadas.includes(letra)) {
+        // Verificar si esta letra forma sílabas comunes con letras conocidas
+        for (const letraConocida of letrasConocidas) {
+          const posibleSilaba1 = letraConocida + letra
+          const posibleSilaba2 = letra + letraConocida
+          if (silabasComunes.includes(posibleSilaba1) || silabasComunes.includes(posibleSilaba2)) {
+            return letra
+          }
+        }
+      }
+    }
+
     // Si no encuentra patrones de sílabas, usar frecuencia
-    return BotFrecuencia.elegirLetra(palabraOculta, letrasUsadas)
+    return await BotFrecuencia.elegirLetra(palabraOculta, letrasUsadas)
   },
 }
 
@@ -118,7 +134,8 @@ export const BotFonetico: Bot = {
 export const BotConservador: Bot = {
   nombre: "BotConservador",
   letrasExitosas: [] as string[],
-  elegirLetra: function (palabraOculta, letrasUsadas, palabra) {
+  letrasFallidas: [] as string[],
+  elegirLetra: async function (palabraOculta, letrasUsadas, palabra) {
     // Si hay letras exitosas previas, intentar usarlas primero
     if (this.letrasExitosas.length > 0) {
       for (const letra of this.letrasExitosas) {
@@ -128,25 +145,51 @@ export const BotConservador: Bot = {
       }
     }
 
+    // Estrategia inicial: empezar con vocales más frecuentes
+    if (letrasUsadas.length === 0) {
+      const vocalesFrecuentes = ["e", "a", "o", "i", "u"]
+      for (const vocal of vocalesFrecuentes) {
+        if (!letrasUsadas.includes(vocal)) {
+          return vocal
+        }
+      }
+    }
+
+    // Estrategia conservadora: evitar letras que ya fallaron
+    const letrasDisponibles = frecuenciaLetras.filter(letra => 
+      !letrasUsadas.includes(letra) && !this.letrasFallidas.includes(letra)
+    )
+
+    if (letrasDisponibles.length > 0) {
+      // Elegir la letra más frecuente entre las disponibles
+      for (const letra of letrasDisponibles) {
+        return letra
+      }
+    }
+
     // Si no hay letras exitosas o ya se usaron todas, usar frecuencia
-    const letraElegida = BotFrecuencia.elegirLetra(palabraOculta, letrasUsadas)
+    const letraElegida = await BotFrecuencia.elegirLetra(palabraOculta, letrasUsadas)
 
     // Si la letra está en la palabra, añadirla a las exitosas
     if (palabra && palabra.includes(letraElegida) && !this.letrasExitosas.includes(letraElegida)) {
       this.letrasExitosas.push(letraElegida)
+    } else if (palabra && !palabra.includes(letraElegida) && !this.letrasFallidas.includes(letraElegida)) {
+      // Si la letra no está en la palabra, añadirla a las fallidas
+      this.letrasFallidas.push(letraElegida)
     }
 
     return letraElegida
   },
   reset: function () {
     this.letrasExitosas = []
+    this.letrasFallidas = []
   },
 }
 
 // Bot que empieza con letras raras y luego cambia
 export const BotKamikaze: Bot = {
   nombre: "BotKamikaze",
-  elegirLetra: (palabraOculta, letrasUsadas) => {
+  elegirLetra: async (palabraOculta, letrasUsadas) => {
     // Si hay menos de 3 letras usadas, usar letras poco frecuentes
     if (letrasUsadas.length < 3) {
       const letrasRaras = ["k", "w", "x", "y", "z", "j", "ñ", "q", "f", "h"]
@@ -158,16 +201,78 @@ export const BotKamikaze: Bot = {
       }
     }
 
-    // Después de 3 intentos, cambiar a estrategia de frecuencia
-    return BotFrecuencia.elegirLetra(palabraOculta, letrasUsadas)
+    // Estrategia intermedia: usar letras de frecuencia media
+    if (letrasUsadas.length < 8) {
+      const letrasMedias = ["p", "b", "g", "v", "y", "h", "f", "z", "j", "ñ"]
+      for (const letra of letrasMedias) {
+        if (!letrasUsadas.includes(letra)) {
+          return letra
+        }
+      }
+    }
+
+    // Después de 8 intentos, cambiar a estrategia de frecuencia
+    return await BotFrecuencia.elegirLetra(palabraOculta, letrasUsadas)
   },
 }
 
+// Bot que usa ChatGPT para elegir letras
+export const BotChatGPT: Bot = {
+  nombre: "BotChatGPT",
+  elegirLetra: async (palabraOculta, letrasUsadas, palabra) => {
+    try {
+      console.log("🤖 [BOT] BotChatGPT solicitando letra...", {
+        patron: palabraOculta.join(""),
+        letrasUsadas,
+        longitud: palabraOculta.length,
+        timestamp: new Date().toISOString()
+      })
+
+      const response = await fetch("/api/chatgpt", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          palabraOculta,
+          letrasUsadas,
+          longitud: palabraOculta.length,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error("Error en la API")
+      }
+
+      const data = await response.json()
+      
+      console.log("✅ [BOT] Respuesta de BotChatGPT:", data)
+      
+      // Si ChatGPT devuelve una letra válida, usarla
+      if (data.letra && !letrasUsadas.includes(data.letra)) {
+        console.log("🎯 [BOT] BotChatGPT eligió:", data.letra)
+        return data.letra
+      }
+      
+      console.log("⚠️ [BOT] BotChatGPT falló, usando fallback")
+      // Fallback a estrategia de frecuencia si ChatGPT falla
+      return await BotFrecuencia.elegirLetra(palabraOculta, letrasUsadas)
+    } catch (error) {
+      console.error("❌ [BOT] Error con BotChatGPT:", error)
+      // Fallback a estrategia de frecuencia
+      return await BotFrecuencia.elegirLetra(palabraOculta, letrasUsadas)
+    }
+  },
+}
+
+// Lista de bots clásicos (sin ChatGPT)
+export const botsClasicos: Bot[] = [BotRandom, BotFrecuencia, BotInteligente, BotFonetico, BotConservador, BotKamikaze]
+
 // Lista de todos los bots
-const bots: Bot[] = [BotRandom, BotFrecuencia, BotInteligente, BotFonetico, BotConservador, BotKamikaze]
+const bots: Bot[] = [...botsClasicos, BotChatGPT]
 
 // Función para simular una partida con un bot
-function simularPartida(palabra: string, bot: Bot, maxErrores = 6): PartidaDetallada {
+async function simularPartida(palabra: string, bot: Bot, maxErrores = 6): Promise<PartidaDetallada> {
   // Reiniciar el bot si tiene función reset
   if (bot.reset) {
     bot.reset()
@@ -183,7 +288,7 @@ function simularPartida(palabra: string, bot: Bot, maxErrores = 6): PartidaDetal
   // Máximo 26 intentos (todas las letras del alfabeto)
   while (errores < maxErrores && palabraOculta.includes("_") && letrasUsadas.length < 26) {
     // El bot elige una letra
-    const letra = bot.elegirLetra(palabraOculta, letrasUsadas, palabra)
+    const letra = await bot.elegirLetra(palabraOculta, letrasUsadas, palabra)
     letrasUsadas.push(letra)
     secuenciaLetras.push(letra)
 
@@ -213,18 +318,19 @@ function simularPartida(palabra: string, bot: Bot, maxErrores = 6): PartidaDetal
   }
 }
 
-// Función principal para simular partidas con todos los bots
-export function simularPartidas(palabras: string[], maxErrores = 6): BotResult[] {
+// Función principal para simular partidas con bots específicos
+export async function simularPartidas(palabras: string[], maxErrores = 6, botsASimular?: Bot[]): Promise<BotResult[]> {
+  const botsParaSimular = botsASimular || bots
   const resultados: BotResult[] = []
 
-  for (const bot of bots) {
+  for (const bot of botsParaSimular) {
     let palabrasAdivinadas = 0
     let erroresTotal = 0
     let letrasUsadasTotal = 0
     const resultadosDetallados: PartidaDetallada[] = []
 
     for (const palabra of palabras) {
-      const resultado = simularPartida(palabra, bot, maxErrores)
+      const resultado = await simularPartida(palabra, bot, maxErrores)
       resultadosDetallados.push(resultado)
 
       if (resultado.adivinada) {
@@ -246,4 +352,14 @@ export function simularPartidas(palabras: string[], maxErrores = 6): BotResult[]
   }
 
   return resultados
+}
+
+// Función para simular solo bots clásicos
+export async function simularPartidasClasicas(palabras: string[], maxErrores = 6): Promise<BotResult[]> {
+  return simularPartidas(palabras, maxErrores, botsClasicos)
+}
+
+// Función para simular solo ChatGPT
+export async function simularPartidasChatGPT(palabras: string[], maxErrores = 6): Promise<BotResult[]> {
+  return simularPartidas(palabras, maxErrores, [BotChatGPT])
 }

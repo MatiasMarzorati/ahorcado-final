@@ -1,6 +1,6 @@
 "use client"
 
-import { type FC, useState } from "react"
+import React, { type FC, useState } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -58,9 +58,8 @@ export const SimulationResults: FC<SimulationResultsProps> = ({ resultados, pala
         </TableHeader>
         <TableBody>
           {resultadosOrdenados.map((resultado) => (
-            <>
+            <React.Fragment key={resultado.nombre}>
               <TableRow
-                key={resultado.nombre}
                 className="hover:bg-muted/50 cursor-pointer"
                 onClick={() => toggleBot(resultado.nombre)}
               >
@@ -184,7 +183,7 @@ export const SimulationResults: FC<SimulationResultsProps> = ({ resultados, pala
                   </TableCell>
                 </TableRow>
               )}
-            </>
+            </React.Fragment>
           ))}
         </TableBody>
       </Table>

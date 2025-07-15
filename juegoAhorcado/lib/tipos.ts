@@ -23,6 +23,7 @@ export interface PartidaDetallada extends PartidaResult {
 
 export interface Bot {
   nombre: string
-  elegirLetra: (palabraOculta: string[], letrasUsadas: string[], palabra?: string) => string
+  elegirLetra: (palabraOculta: string[], letrasUsadas: string[], palabra?: string) => string | Promise<string>
   reset?: () => void
+  [key: string]: any // Permitir propiedades adicionales
 }
