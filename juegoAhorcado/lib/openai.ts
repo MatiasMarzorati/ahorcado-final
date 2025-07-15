@@ -1,19 +1,28 @@
 import OpenAI from "openai"
 
-// Tipos para function calling
-export type AllowedLetter = 
-  | "a" | "b" | "c" | "d" | "e" | "f" | "g" | "h" | "i" | "j" | "k" | "l" | "m" 
+/*
+ * NOTA IMPORTANTE DE SEGURIDAD
+ * ============================
+ * 1. El SDK de OpenAI bloquea su uso en el navegador para evitar filtrar la API key.
+ * 2. Este archivo ahora detecta si el código se está ejecutando en el cliente.
+ *    – En browser: Llama a nuestra route `/api/chatgpt` (que sí corre en servidor).
+ *    – En server: Instancia el SDK con la key de entorno de manera segura.
+ */
+
+// Tipos para function-calling
+export type AllowedLetter =
+  | "a" | "b" | "c" | "d" | "e" | "f" | "g" | "h" | "i" | "j" | "k" | "l" | "m"
   | "n" | "ñ" | "o" | "p" | "q" | "r" | "s" | "t" | "u" | "v" | "w" | "x" | "y" | "z"
 
 export type GuessLetterResponse = {
   letter: AllowedLetter
 }
 
-// Cache simple para evitar llamadas duplicadas
+// Cache simple para evitar llamadas duplicadas (tanto en cliente como server)
 const suggestionCache = new Map<string, { letra: AllowedLetter, timestamp: number }>()
-const CACHE_DURATION = 5000 // 5 segundos
+const CACHE_DURATION = 5000 // 5 s
 
-// Herramienta para adivinar letra
+// Definición de la herramienta para function-calling
 export const guessLetterTool = {
   type: "function" as const,
   function: {
@@ -36,10 +45,8 @@ export const guessLetterTool = {
   }
 }
 
-// Cliente OpenAI
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
+// Cliente OpenAI (solo se inicializará en entorno servidor)
+let openai: OpenAI | null = null
 
 // Función para obtener sugerencia de letra usando function calling
 export async function getLetterSuggestion(
@@ -47,6 +54,42 @@ export async function getLetterSuggestion(
   letrasIncorrectas: string[],
   longitud: number
 ): Promise<AllowedLetter> {
+  // 1️⃣ Entorno CLIENTE: llamamos a la API interna para evitar exponer la key
+  if (typeof window !== "undefined") {
+    try {
+      const response = await fetch("/api/chatgpt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          palabraOculta: patron.split(""),
+          letrasUsadas: letrasIncorrectas, // solo las incorrectas
+          longitud,
+        }),
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        const letra = (data.letra || "e") as AllowedLetter
+        return letra
+      }
+    } catch (err) {
+      console.error("❌ [CLIENTE] Error llamando a /api/chatgpt:", err)
+    }
+
+    // Fallback muy simple en cliente
+    return "e"
+  }
+
+  // 2️⃣ Entorno SERVIDOR
+  // Inicializar OpenAI una sola vez
+  if (!openai) {
+    openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+      // En server este flag es irrelevante, pero lo dejamos explícito
+      dangerouslyAllowBrowser: false,
+    })
+  }
+
   try {
     // Crear clave de cache
     const cacheKey = `${patron}-${letrasIncorrectas.sort().join(",")}-${longitud}`
@@ -100,7 +143,7 @@ Elegir UNA SOLA letra del alfabeto español que no haya sido probada aún.
 Usa tu propio criterio y conocimiento del español para elegir la mejor letra.`
 
     const startTime = Date.now()
-    const completion = await openai.chat.completions.create({
+    const completion = await openai!.chat.completions.create({
       model: "gpt-4o-mini",
       tools: [guessLetterTool],
       tool_choice: { type: "function", function: { name: "guess_letter" } },
