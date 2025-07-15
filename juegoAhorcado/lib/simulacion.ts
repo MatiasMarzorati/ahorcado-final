@@ -228,37 +228,23 @@ export const BotChatGPT: Bot = {
         timestamp: new Date().toISOString()
       })
 
-      const response = await fetch("/api/chatgpt", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          palabraOculta,
-          letrasUsadas,
-          longitud: palabraOculta.length,
-        }),
-      })
-
-      if (!response.ok) {
-        throw new Error("Error en la API")
-      }
-
-      const data = await response.json()
+      // Obtener solo las letras incorrectas (las que no están en el patrón)
+      const letrasIncorrectas = letrasUsadas.filter((letra: string) => !palabraOculta.includes(letra))
       
-      console.log("✅ [BOT] Respuesta de BotChatGPT:", data)
+      // Usar la nueva función con function calling
+      const { getLetterSuggestion } = await import("./openai")
+      const letra = await getLetterSuggestion(
+        palabraOculta.join(""),
+        letrasIncorrectas,
+        palabraOculta.length
+      )
       
-      // Si ChatGPT devuelve una letra válida, usarla
-      if (data.letra && !letrasUsadas.includes(data.letra)) {
-        console.log("🎯 [BOT] BotChatGPT eligió:", data.letra)
-        return data.letra
-      }
+      console.log("🎯 [BOT] BotChatGPT eligió:", letra)
+      return letra
       
-      console.log("⚠️ [BOT] BotChatGPT falló, usando fallback")
-      // Fallback a estrategia de frecuencia si ChatGPT falla
-      return await BotFrecuencia.elegirLetra(palabraOculta, letrasUsadas)
     } catch (error) {
       console.error("❌ [BOT] Error con BotChatGPT:", error)
+      console.log("🔄 [BOT] Usando fallback a frecuencia")
       // Fallback a estrategia de frecuencia
       return await BotFrecuencia.elegirLetra(palabraOculta, letrasUsadas)
     }

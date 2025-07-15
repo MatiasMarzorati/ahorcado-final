@@ -33,11 +33,21 @@ ESTADO ACTUAL DEL JUEGO:
 - Letras ya probadas (incorrectas): [${letrasIncorrectasStr}]
 - Longitud total de la palabra: ${longitud} letras
 
-CONTEXTO:
+CONTEXTO DETALLADO:
 - Esta es una palabra en español de ${longitud} letras
 - Ya se han probado las letras incorrectas: ${letrasIncorrectasStr || "ninguna"}
 - Las letras que aparecen en el patrón están en la palabra
 - Las letras que no aparecen en el patrón pero están en "ya probadas" NO están en la palabra
+
+ANÁLISIS DEL PATRÓN:
+- Observa cuidadosamente el patrón "${patron}"
+- Identifica las letras que faltan (los guiones bajos "_")
+- Considera qué letras podrían completar palabras comunes en español
+- Piensa en la estructura de la palabra y posibles combinaciones
+
+EJEMPLO DE ANÁLISIS:
+Si tienes "rendi_iento", faltan letras en las posiciones con "_". 
+Considera qué letras podrían completar palabras como "rendimiento", "rendimiento", etc.
 
 TU TAREA:
 Elegir UNA SOLA letra del alfabeto español que no haya sido probada aún.
