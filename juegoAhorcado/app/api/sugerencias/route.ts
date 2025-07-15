@@ -1,10 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import OpenAI from "openai"
 import { frecuenciaLetras } from "@/lib/palabras"
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
 
 export async function POST(request: NextRequest) {
   try {
@@ -89,50 +84,6 @@ export async function POST(request: NextRequest) {
         })(),
       },
     ]
-
-    // Agregar sugerencia de ChatGPT usando function calling
-    try {
-      const patron = palabraOculta.join("")
-      
-      // Obtener solo las letras incorrectas (las que no están en el patrón)
-      const letrasIncorrectas = letrasUsadas.filter((letra: string) => !palabraOculta.includes(letra))
-      
-      console.log("🤖 [SUGERENCIAS] Llamando a ChatGPT...")
-      console.log("📊 Contexto:", {
-        patron,
-        letrasIncorrectas: letrasIncorrectas.join(", "),
-        longitud: palabraOculta.length,
-        timestamp: new Date().toISOString()
-      })
-      
-      // Usar la nueva función con function calling
-      const { getLetterSuggestion } = await import("@/lib/openai")
-      const letra = await getLetterSuggestion(
-        patron,
-        letrasIncorrectas,
-        palabraOculta.length
-      )
-      
-      console.log("🎯 [SUGERENCIAS] Respuesta válida de ChatGPT:", letra)
-      sugerencias.push({
-        nombre: "BotChatGPT",
-        letra: letra,
-      })
-      
-    } catch (error) {
-      console.error("❌ [SUGERENCIAS] Error con ChatGPT:", error)
-      console.log("🔄 [SUGERENCIAS] Usando fallback a frecuencia")
-      // Fallback a frecuencia
-      for (const letra of frecuenciaLetras) {
-        if (!letrasUsadas.includes(letra)) {
-          sugerencias.push({
-            nombre: "BotChatGPT",
-            letra: letra,
-          })
-          break
-        }
-      }
-    }
 
     return NextResponse.json({ sugerencias })
   } catch (error) {

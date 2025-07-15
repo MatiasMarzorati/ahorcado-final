@@ -43,7 +43,7 @@ export default function Home() {
           </CardHeader>
           <CardContent className="flex-grow">
             <p>
-              Compara el rendimiento de 7 bots diferentes con distintas estrategias para resolver palabras. Carga una
+              Compara el rendimiento de 6 bots diferentes con distintas estrategias para resolver palabras. Carga una
               lista de palabras y analiza los resultados.
             </p>
           </CardContent>
@@ -109,14 +109,6 @@ export default function Home() {
             </CardHeader>
             <CardContent>
               <p className="text-sm">Empieza con letras raras y luego cambia a estrategia común.</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">BotChatGPT</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm">Usa inteligencia artificial para analizar el contexto y elegir la mejor letra.</p>
             </CardContent>
           </Card>
         </div>

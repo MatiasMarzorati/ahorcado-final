@@ -127,6 +127,11 @@ CONTEXTO DETALLADO:
 - Las letras que aparecen en el patrón están en la palabra
 - Las letras que no aparecen en el patrón pero están en "ya probadas" NO están en la palabra
 
+REGLAS IMPORTANTES:
+- NO debes elegir letras que ya aparecen en el patrón (las letras visibles)
+- NO debes elegir letras que ya se probaron y fallaron (las de la lista de incorrectas)
+- Solo puedes elegir letras que NO se han probado aún
+
 ANÁLISIS DEL PATRÓN:
 - Observa cuidadosamente el patrón "${patron}"
 - Identifica las letras que faltan (los guiones bajos "_")
@@ -138,7 +143,9 @@ Si tienes "rendi_iento", faltan letras en las posiciones con "_".
 Considera qué letras podrían completar palabras como "rendimiento", "rendimiento", etc.
 
 TU TAREA:
-Elegir UNA SOLA letra del alfabeto español que no haya sido probada aún.
+Elegir UNA SOLA letra del alfabeto español que NO haya sido probada aún.
+
+IMPORTANTE: Verifica que la letra elegida no esté en el patrón ni en la lista de letras incorrectas antes de responder.
 
 Usa tu propio criterio y conocimiento del español para elegir la mejor letra.`
 

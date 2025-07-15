@@ -98,34 +98,125 @@ export const BotInteligente: Bot = {
 export const BotFonetico: Bot = {
   nombre: "BotFonetico",
   elegirLetra: async (palabraOculta, letrasUsadas) => {
-    // Buscar patrones de sílabas incompletas
-    for (const silaba of silabasComunes) {
-      // Si la primera letra de la sílaba está en la palabra pero la segunda no
-      if (silaba.length === 2) {
-        const [primera, segunda] = silaba.split("")
-        if (palabraOculta.includes(primera) && !letrasUsadas.includes(segunda)) {
-          return segunda
-        }
-      }
-    }
+    const vocales = ["a", "e", "i", "o", "u"]
+    const consonantes = "bcdfghjklmnñpqrstvwxyz".split("")
+    const letrasConocidas = palabraOculta.filter((l) => l !== "_")
 
-    // Estrategia alternativa: buscar letras que formen sílabas comunes
-    // Priorizar letras que podrían formar sílabas con letras ya conocidas
-    const letrasConocidas = palabraOculta.filter(l => l !== "_")
-    for (const letra of frecuenciaLetras) {
-      if (!letrasUsadas.includes(letra)) {
-        // Verificar si esta letra forma sílabas comunes con letras conocidas
-        for (const letraConocida of letrasConocidas) {
-          const posibleSilaba1 = letraConocida + letra
-          const posibleSilaba2 = letra + letraConocida
-          if (silabasComunes.includes(posibleSilaba1) || silabasComunes.includes(posibleSilaba2)) {
-            return letra
+    // Generar candidatos que aún no se hayan probado
+    const candidatos = "abcdefghijklmnñopqrstuvwxyz"
+      .split("")
+      .filter((l) => !letrasUsadas.includes(l))
+
+    let mejor = ""
+    let mejorScore = -1
+
+    for (const letra of candidatos) {
+      let score = 0
+
+      // --- 1. ANÁLISIS DE SÍLABAS CON LETRAS CONOCIDAS (PRIORIDAD MÁXIMA) ---
+      for (const conocida of letrasConocidas) {
+        // Sílabas que empiezan con letra conocida
+        if (silabasComunes.includes(conocida + letra)) score += 5
+        // Sílabas que terminan con letra conocida
+        if (silabasComunes.includes(letra + conocida)) score += 5
+      }
+
+      // --- 2. ANÁLISIS DE PATRONES ESPECÍFICOS EN EL PATRÓN ---
+      // Buscar patrones como "C_V" (consonante-vocal) y "V_C" (vocal-consonante)
+      for (let i = 0; i < palabraOculta.length - 1; i++) {
+        const actual = palabraOculta[i]
+        const siguiente = palabraOculta[i + 1]
+        
+        if (actual !== "_" && siguiente === "_") {
+          // Si la actual es consonante, buscar vocal que forme sílaba
+          if (consonantes.includes(actual) && vocales.includes(letra)) {
+            if (silabasComunes.includes(actual + letra)) score += 4
+          }
+          // Si la actual es vocal, buscar consonante que forme sílaba
+          if (vocales.includes(actual) && consonantes.includes(letra)) {
+            if (silabasComunes.includes(actual + letra)) score += 4
+          }
+        }
+        
+        if (actual === "_" && siguiente !== "_") {
+          // Si la siguiente es consonante, buscar vocal que forme sílaba
+          if (consonantes.includes(siguiente) && vocales.includes(letra)) {
+            if (silabasComunes.includes(letra + siguiente)) score += 4
+          }
+          // Si la siguiente es vocal, buscar consonante que forme sílaba
+          if (vocales.includes(siguiente) && consonantes.includes(letra)) {
+            if (silabasComunes.includes(letra + siguiente)) score += 4
           }
         }
       }
+
+      // --- 3. ANÁLISIS DE POSICIÓN EN LA PALABRA ---
+      const posicion = palabraOculta.indexOf("_")
+      if (posicion !== -1) {
+        // En medio: evaluar contexto con letras adyacentes
+        if (posicion > 0 && posicion < palabraOculta.length - 1) {
+          const anterior = palabraOculta[posicion - 1]
+          const siguiente = palabraOculta[posicion + 1]
+          
+          // Si hay letra anterior, buscar sílabas que empiecen con ella
+          if (anterior !== "_") {
+            if (silabasComunes.includes(anterior + letra)) score += 3
+          }
+          // Si hay letra siguiente, buscar sílabas que terminen con ella
+          if (siguiente !== "_") {
+            if (silabasComunes.includes(letra + siguiente)) score += 3
+          }
+        }
+      }
+
+      // --- 4. PREFERENCIAS FONÉTICAS EQUILIBRADAS ---
+      // Preferir letras que forman sílabas comunes en español
+      const silabasConLetra = silabasComunes.filter(s => s.includes(letra))
+      score += silabasConLetra.length * 0.5
+
+      // --- 5. ANÁLISIS DE LONGITUD ADAPTATIVO ---
+      // Para palabras cortas (≤4 letras), ligera preferencia por vocales
+      if (palabraOculta.length <= 4 && vocales.includes(letra)) score += 0.5
+      // Para palabras largas (>6 letras), ligera preferencia por consonantes frecuentes
+      if (palabraOculta.length > 6 && ["r", "n", "s", "t", "l"].includes(letra)) score += 0.5
+
+      if (score > mejorScore) {
+        mejorScore = score
+        mejor = letra
+      }
     }
 
-    // Si no encuentra patrones de sílabas, usar frecuencia
+    if (mejorScore > 0) {
+      return mejor
+    }
+
+    // --- FALLBACK EQUILIBRADO ---
+    // Si no hay puntuación alta, usar estrategia mixta balanceada
+    const vocalesDisponibles = candidatos.filter(l => vocales.includes(l))
+    const consonantesDisponibles = candidatos.filter(l => consonantes.includes(l))
+    
+    // Alternar entre vocales y consonantes de forma equilibrada
+    if (vocalesDisponibles.length > 0 && consonantesDisponibles.length > 0) {
+      const vocalesUsadas = letrasUsadas.filter(l => vocales.includes(l))
+      const consonantesUsadas = letrasUsadas.filter(l => consonantes.includes(l))
+      
+      // Si hay más consonantes que vocales usadas, probar vocal
+      if (consonantesUsadas.length > vocalesUsadas.length) {
+        return vocalesDisponibles[0]
+      }
+      // Si hay más vocales que consonantes usadas, probar consonante
+      if (vocalesUsadas.length > consonantesUsadas.length) {
+        return consonantesDisponibles[0]
+      }
+      // Si están equilibradas, alternar
+      return letrasUsadas.length % 2 === 0 ? vocalesDisponibles[0] : consonantesDisponibles[0]
+    }
+
+    // Si solo hay un tipo disponible, usarlo
+    if (vocalesDisponibles.length > 0) return vocalesDisponibles[0]
+    if (consonantesDisponibles.length > 0) return consonantesDisponibles[0]
+
+    // Último recurso: frecuencia equilibrada
     return await BotFrecuencia.elegirLetra(palabraOculta, letrasUsadas)
   },
 }
@@ -135,47 +226,167 @@ export const BotConservador: Bot = {
   nombre: "BotConservador",
   letrasExitosas: [] as string[],
   letrasFallidas: [] as string[],
+  // Historial con contadores de aciertos / fallos
+  letrasStats: {} as Record<string, { ok: number; fail: number }>,
+  // Nuevo: historial de patrones y longitudes
+  patronesStats: {} as Record<string, { ok: number; fail: number }>,
+  longitudesStats: {} as Record<number, { ok: number; fail: number }>,
   elegirLetra: async function (palabraOculta, letrasUsadas, palabra) {
-    // Si hay letras exitosas previas, intentar usarlas primero
-    if (this.letrasExitosas.length > 0) {
-      for (const letra of this.letrasExitosas) {
-        if (!letrasUsadas.includes(letra)) {
-          return letra
+    const vocales = ["a", "e", "i", "o", "u"]
+    const consonantes = "bcdfghjklmnñpqrstvwxyz".split("")
+
+    // --- 1. ANÁLISIS CONTEXTUAL AVANZADO ---
+    const longitud = palabraOculta.length
+    const patron = palabraOculta.join("")
+    const vocalesUsadas = letrasUsadas.filter(l => vocales.includes(l))
+    const consonantesUsadas = letrasUsadas.filter(l => consonantes.includes(l))
+    
+    // Calcular estadísticas de longitud actual
+    const longStat = this.longitudesStats[longitud] || { ok: 0, fail: 0 }
+    const longRatio = longStat.ok + longStat.fail === 0 ? 0 : longStat.ok / (longStat.ok + longStat.fail)
+
+    // --- 2. CALCULAR PUNTUACIÓN INTELIGENTE ---
+    const disponibles = "abcdefghijklmnñopqrstuvwxyz"
+      .split("")
+      .filter((l) => !letrasUsadas.includes(l))
+
+    let mejor = ""
+    let mejorScore = -Infinity
+
+    for (const letra of disponibles) {
+      const stat = this.letrasStats[letra] || { ok: 0, fail: 0 }
+      const intentos = stat.ok + stat.fail
+
+      // --- Score base con suavizado ---
+      const ratio = intentos === 0 ? 0 : stat.ok / intentos
+      let score = ratio * 5 // ponderación principal
+
+      // --- ANÁLISIS DE CONTEXTO ESPECÍFICO ---
+      
+      // 1. Ajuste por longitud de palabra
+      if (longRatio > 0.6) {
+        // Si las palabras de esta longitud suelen adivinarse, ser más agresivo
+        score += 1
+      } else if (longRatio < 0.3) {
+        // Si las palabras de esta longitud son difíciles, ser más conservador
+        score -= 1
+      }
+
+      // 2. Análisis de balance vocal/consonante
+      const balanceVocal = vocalesUsadas.length / Math.max(letrasUsadas.length, 1)
+      const balanceConsonante = consonantesUsadas.length / Math.max(letrasUsadas.length, 1)
+      
+      if (vocales.includes(letra)) {
+        // Si ya hay muchas vocales, reducir preferencia
+        if (balanceVocal > 0.7) score -= 2
+        // Si hay pocas vocales, aumentar preferencia
+        if (balanceVocal < 0.3) score += 2
+      } else {
+        // Si ya hay muchas consonantes, reducir preferencia
+        if (balanceConsonante > 0.7) score -= 2
+        // Si hay pocas consonantes, aumentar preferencia
+        if (balanceConsonante < 0.3) score += 2
+      }
+
+      // 3. Análisis de posición en la palabra
+      const posicionesVacias = palabraOculta.map((l, i) => l === "_" ? i : -1).filter(i => i !== -1)
+      if (posicionesVacias.length > 0) {
+        const primeraPosicion = posicionesVacias[0]
+        const ultimaPosicion = posicionesVacias[posicionesVacias.length - 1]
+        
+        // Al inicio: preferir consonantes
+        if (primeraPosicion === 0 && consonantes.includes(letra)) score += 1
+        // Al final: preferir vocales o consonantes suaves
+        if (ultimaPosicion === palabraOculta.length - 1) {
+          if (vocales.includes(letra)) score += 1
+          if (["n", "r", "s", "l"].includes(letra)) score += 0.5
         }
       }
-    }
 
-    // Estrategia inicial: empezar con vocales más frecuentes
-    if (letrasUsadas.length === 0) {
-      const vocalesFrecuentes = ["e", "a", "o", "i", "u"]
-      for (const vocal of vocalesFrecuentes) {
-        if (!letrasUsadas.includes(vocal)) {
-          return vocal
+      // 4. Aprendizaje de patrones específicos
+      const patronesRelevantes = [
+        patron.replace(/_/g, "."), // patrón actual
+        `${longitud}letras`, // longitud
+        `${vocalesUsadas.length}v-${consonantesUsadas.length}c` // balance
+      ]
+      
+      for (const patronRelevante of patronesRelevantes) {
+        const patronStat = this.patronesStats[patronRelevante] || { ok: 0, fail: 0 }
+        const patronIntentos = patronStat.ok + patronStat.fail
+        if (patronIntentos > 0) {
+          const patronRatio = patronStat.ok / patronIntentos
+          score += patronRatio * 2 // influencia moderada de patrones
         }
       }
-    }
 
-    // Estrategia conservadora: evitar letras que ya fallaron
-    const letrasDisponibles = frecuenciaLetras.filter(letra => 
-      !letrasUsadas.includes(letra) && !this.letrasFallidas.includes(letra)
-    )
+      // 5. Preferencia inicial inteligente
+      if (intentos === 0) {
+        // Para primeras letras: preferir vocales frecuentes
+        if (letrasUsadas.length === 0 && vocales.includes(letra)) {
+          score += ["e", "a", "o", "i", "u"].indexOf(letra) * 0.5
+        }
+        // Para palabras largas sin vocales: priorizar vocales
+        if (longitud > 6 && vocalesUsadas.length === 0 && vocales.includes(letra)) {
+          score += 2
+        }
+      }
 
-    if (letrasDisponibles.length > 0) {
-      // Elegir la letra más frecuente entre las disponibles
-      for (const letra of letrasDisponibles) {
-        return letra
+      // 6. Penalización por fallos recientes
+      score -= stat.fail * 0.1
+
+      if (score > mejorScore) {
+        mejorScore = score
+        mejor = letra
       }
     }
 
-    // Si no hay letras exitosas o ya se usaron todas, usar frecuencia
-    const letraElegida = await BotFrecuencia.elegirLetra(palabraOculta, letrasUsadas)
+    let letraElegida = mejor
 
-    // Si la letra está en la palabra, añadirla a las exitosas
-    if (palabra && palabra.includes(letraElegida) && !this.letrasExitosas.includes(letraElegida)) {
-      this.letrasExitosas.push(letraElegida)
-    } else if (palabra && !palabra.includes(letraElegida) && !this.letrasFallidas.includes(letraElegida)) {
-      // Si la letra no está en la palabra, añadirla a las fallidas
-      this.letrasFallidas.push(letraElegida)
+    // Si por alguna razón no se eligió nada, usar estrategia de frecuencia
+    if (!letraElegida) {
+      letraElegida = await BotFrecuencia.elegirLetra(palabraOculta, letrasUsadas)
+    }
+
+    // --- 3. ACTUALIZAR HISTORIAL AVANZADO ---
+    
+    // Actualizar estadísticas de letra
+    if (!this.letrasStats[letraElegida]) {
+      this.letrasStats[letraElegida] = { ok: 0, fail: 0 }
+    }
+
+    // Actualizar estadísticas de longitud
+    if (!this.longitudesStats[longitud]) {
+      this.longitudesStats[longitud] = { ok: 0, fail: 0 }
+    }
+
+    // Actualizar estadísticas de patrones
+    const patronesParaActualizar = [
+      patron.replace(/_/g, "."),
+      `${longitud}letras`,
+      `${vocalesUsadas.length}v-${consonantesUsadas.length}c`
+    ]
+    
+    for (const patronKey of patronesParaActualizar) {
+      if (!this.patronesStats[patronKey]) {
+        this.patronesStats[patronKey] = { ok: 0, fail: 0 }
+      }
+    }
+
+    // Registrar resultado
+    if (palabra && palabra.includes(letraElegida)) {
+      if (!this.letrasExitosas.includes(letraElegida)) this.letrasExitosas.push(letraElegida)
+      this.letrasStats[letraElegida].ok += 1
+      this.longitudesStats[longitud].ok += 1
+      for (const patronKey of patronesParaActualizar) {
+        this.patronesStats[patronKey].ok += 1
+      }
+    } else {
+      if (!this.letrasFallidas.includes(letraElegida)) this.letrasFallidas.push(letraElegida)
+      this.letrasStats[letraElegida].fail += 1
+      this.longitudesStats[longitud].fail += 1
+      for (const patronKey of patronesParaActualizar) {
+        this.patronesStats[patronKey].fail += 1
+      }
     }
 
     return letraElegida
@@ -183,6 +394,9 @@ export const BotConservador: Bot = {
   reset: function () {
     this.letrasExitosas = []
     this.letrasFallidas = []
+    this.letrasStats = {}
+    this.patronesStats = {}
+    this.longitudesStats = {}
   },
 }
 
